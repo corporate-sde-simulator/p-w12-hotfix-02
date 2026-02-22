@@ -1,0 +1,45 @@
+﻿# ============================================================
+# HOTFIX — OPS-411: False Positive Alerts at 2 AM
+# Priority: P1 | SLA: 30 minutes | Reporter: On-Call Engineer
+# ============================================================
+#
+# The alerting system fires critical alerts every night at 2 AM
+# when the nightly batch job runs. The batch job temporarily
+# spikes CPU to 92% for 30 seconds, which triggers the alert.
+#
+# Two fixes needed:
+# BUG 1: Alert should require sustained high CPU (> 5 min), not instant spike
+# BUG 2: Maintenance window (2-3 AM) should suppress non-critical alerts
+# ============================================================
+
+alert_rules:
+  - name: "High CPU Usage"
+    metric: cpu_percent
+    # FIX: Add duration_minutes: 5 (must be high for 5+ minutes)
+    condition: "> 90"
+    severity: critical
+    notification:
+      - channel: "#ops-alerts"
+      - pagerduty: true
+
+  - name: "High Memory Usage"
+    metric: memory_percent
+    condition: "> 85"
+    severity: warning
+    notification:
+      - channel: "#ops-alerts"
+
+  - name: "Disk Space Low"
+    metric: disk_percent
+    condition: "> 90"
+    severity: critical
+    notification:
+      - channel: "#ops-alerts"
+      - pagerduty: true
+
+# FIX: Add maintenance_windows section:
+# maintenance_windows:
+#   - name: "Nightly Batch"
+#     start: "02:00"
+#     end: "03:00"
+#     suppress: [warning]  # Only suppress warnings, not critical
